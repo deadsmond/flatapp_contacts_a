@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'dart:async';
 // import '../storages/ContentStorage.dart';
 import 'package:contacts_service/contacts_service.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -27,28 +28,34 @@ class _FlatAppMainState extends State<ContactsRoute> {
   @override
   void initState() {
     super.initState();
-    // _operateContacts();
+    getContacts();
   }
 
   //---------------------------- CONTACTS --------------------------------------
   void getContacts() async {
-    PermissionStatus permissionStatus = await _getPermission();
-    if (permissionStatus == PermissionStatus.granted) {
-      var contacts = await ContactsService.getContacts();
-      setState(() {
-        _contacts = contacts;
-      });
-    } else {
-      throw PlatformException(
-        code: 'PERMISSION_DENIED',
-        message: 'Access to location data denied',
-        details: null,
-      );
+    try {
+      PermissionStatus permissionStatus = await _getPermission();
+      if (permissionStatus == PermissionStatus.granted) {
+        print("Loading contacts...");
+        var contacts = await ContactsService.getContacts(withThumbnails: false);
+        setState(() {
+          _contacts = contacts;
+          print('Contacts loaded successfully');
+          print('Iterating through contacts...');
+          iterateThroughContacts();
+          print('Iteration completed.');
+        });
+      } else {
+        throw PlatformException(
+          code: 'PERMISSION_DENIED',
+          message: 'Access to location data denied',
+          details: null,
+        );
+      }
+    } catch (e){
+      // what went wrong?
+      print(e);
     }
-  }
-
-  void printContacts(){
-    print(_contacts);
   }
 
   //---------------------------- PERMISSIONS -----------------------------------
@@ -68,13 +75,23 @@ class _FlatAppMainState extends State<ContactsRoute> {
   }
 
   //-------------------------- FILE CONTENT ------------------------------------
+
+  void processingFunc(var element){
+    //processing or transformation on the element
+
+    String name = element.displayName;
+    String temp = element.toMap()['phones'].toList()[0]['value'];
+
+    print('$name $temp');
+  }
+
+  void iterateThroughContacts(){
+    _contacts.forEach((i) =>
+        processingFunc(i)
+    );
+  }
+  
   void _operateContacts() async {
-    // Get all contacts without thumbnail(faster)
-    // _contacts = await ContactsService.getContacts(
-    //     withThumbnails: false);
-
-    print(_contacts);
-
     // store contacts
     // storageContent.writeContent("CONTACTS_COPY", _contacts)
   }
@@ -109,6 +126,48 @@ class _FlatAppMainState extends State<ContactsRoute> {
         },
       )
           : CircularProgressIndicator(),
+
+      bottomNavigationBar: BottomNavigationBar(
+          items: const <BottomNavigationBarItem>[
+            BottomNavigationBarItem(
+              icon: Icon(Icons.not_interested),
+              title: Text('Exit'),
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.exit_to_app),
+              title: Text('Load contacts'),
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.print),
+              title: Text('Print contacts'),
+            ),
+          ],
+          // operate NavigationBar
+          onTap: (index) {
+            // operate NavigationBar
+            switch (index) {
+              case 0:
+                // EXIT --------------------------------------------------------
+                // exit app - this is preferred way
+                print("Closing app");
+                SystemChannels.platform.invokeMethod('SystemNavigator.pop');
+                break;
+              case 1:
+                // LOAD DATA ---------------------------------------------------
+                try {
+                  getContacts();
+                } catch (e){
+                  // what went wrong?
+                  print(e);
+                }
+                break;
+              case 2:
+                iterateThroughContacts();
+                break;
+            // -----------------------------------------------------------------
+            }
+          }
+      ),
     );
   }
 }
