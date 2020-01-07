@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:async';
-// import '../storages/ContentStorage.dart';
+import '../storages/ContentStorage.dart';
 import 'package:contacts_service/contacts_service.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:http/http.dart' as http;
 
 
 //==============================================================================
@@ -22,9 +21,8 @@ class _FlatAppMainState extends State<ContactsRoute> {
   //---------------------------- VARIABLES -------------------------------------
   // var to store contacts
   Iterable<Contact> _contacts;
-
-  String _name;
-  String _number;
+  ContentStorage storageContent = ContentStorage();
+  String _data;
 
   //---------------------------- INIT ------------------------------------------
   @override
@@ -77,38 +75,26 @@ class _FlatAppMainState extends State<ContactsRoute> {
   }
 
   //-------------------------- FILE CONTENT ------------------------------------
-
-  void sendRequest() async {
-    var url = 'https://deadsmond.pythonanywhere.com/checkpoint';
-    Map<String, String> headers = {"Content-type": "application/json"};
-    String jsonBody = '{"name": "$_name", "number": "$_number"}';
-    http.Response response = await http.post(url, headers: headers, body: jsonBody);
-    print('Response status: ${response.statusCode}');
-    print('Response body: ${response.body}');
-  }
-
   void processingFunc(var element){
     //processing or transformation on the element
 
     String name = element.displayName;
     String temp = element.toMap()['phones'].toList()[0]['value'];
 
-    _name = name;
-    _number = temp;
-
-    print('$name $temp');
+    _data = '$name $temp';
   }
 
   void iterateThroughContacts(){
     _contacts.forEach((i) =>
         processingFunc(i)
     );
-    sendRequest();
+    _operateContacts();
   }
-  
+
   void _operateContacts() async {
     // store contacts
-    // storageContent.writeContent("CONTACTS_COPY", _contacts)
+    storageContent.writeContent("CONTACTS_COPY", _data);
+    print("Data stored.");
   }
 
   //---------------------------- MAIN WIDGET -----------------------------------
