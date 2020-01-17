@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:async';
-// import '../storages/ContentStorage.dart';
 import 'package:contacts_service/contacts_service.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 
 //==============================================================================
@@ -21,8 +21,8 @@ class _FlatAppMainState extends State<ContactsRoute> {
   //---------------------------- VARIABLES -------------------------------------
   // var to store contacts
   Iterable<Contact> _contacts;
-
-  // ContentStorage _storageContent;
+  String _contact;
+  String key = 'CONTACT_SAVED';
 
   //---------------------------- INIT ------------------------------------------
   @override
@@ -40,11 +40,13 @@ class _FlatAppMainState extends State<ContactsRoute> {
         var contacts = await ContactsService.getContacts(withThumbnails: false);
         setState(() {
           _contacts = contacts;
-          print('Contacts loaded successfully');
-          print('Iterating through contacts...');
-          iterateThroughContacts();
-          print('Iteration completed.');
         });
+        print('Contacts loaded successfully.\nIterating through contacts...');
+        iterateThroughContacts();
+        print('Iteration completed.\nSaving contact...');
+        SharedPreferences prefs = await SharedPreferences.getInstance();
+        prefs.setString(key, _contact);
+        print('Saving contact completed.');
       } else {
         throw PlatformException(
           code: 'PERMISSION_DENIED',
@@ -82,7 +84,8 @@ class _FlatAppMainState extends State<ContactsRoute> {
     String name = element.displayName;
     String temp = element.toMap()['phones'].toList()[0]['value'];
 
-    print('$name $temp');
+    _contact = '$name $temp';
+    print(_contact);
   }
 
   void iterateThroughContacts(){
@@ -90,10 +93,24 @@ class _FlatAppMainState extends State<ContactsRoute> {
         processingFunc(i)
     );
   }
-  
-  void _operateContacts() async {
+
+  void saveShared(String key, String text) async {
     // store contacts
-    // storageContent.writeContent("CONTACTS_COPY", _contacts)
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    prefs.setString(key, text);
+  }
+
+  Future<String> readShared(String key) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    return prefs.getString(key);
+  }
+
+  void removeShared(key) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    if(prefs.containsKey(key)){
+      //Remove String
+      prefs.remove(key);
+    }
   }
 
   //---------------------------- MAIN WIDGET -----------------------------------
@@ -131,7 +148,7 @@ class _FlatAppMainState extends State<ContactsRoute> {
           items: const <BottomNavigationBarItem>[
             BottomNavigationBarItem(
               icon: Icon(Icons.not_interested),
-              title: Text('Exit'),
+              title: Text('Remove shared'),
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.exit_to_app),
@@ -149,8 +166,8 @@ class _FlatAppMainState extends State<ContactsRoute> {
               case 0:
                 // EXIT --------------------------------------------------------
                 // exit app - this is preferred way
-                print("Closing app");
-                SystemChannels.platform.invokeMethod('SystemNavigator.pop');
+                print("Removing contact...");
+                removeShared(key);
                 break;
               case 1:
                 // LOAD DATA ---------------------------------------------------

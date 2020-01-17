@@ -1,6 +1,9 @@
 # flatapp_contracts_a
 
-A new Flutter application.
+A new Flutter application to get contact and share it with other application.
+
+Sharing is based on 
+[medium tutorial](https://medium.com/flutterdevs/using-sharedpreferences-in-flutter-251755f07127).
 
 ## Getting Started
 
