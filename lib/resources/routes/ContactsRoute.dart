@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'dart:async';
 import 'package:contacts_service/contacts_service.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:io';
 
 
 //==============================================================================
@@ -22,7 +22,6 @@ class _FlatAppMainState extends State<ContactsRoute> {
   // var to store contacts
   Iterable<Contact> _contacts;
   String _contact;
-  String key = 'CONTACT_SAVED';
 
   //---------------------------- INIT ------------------------------------------
   @override
@@ -35,7 +34,9 @@ class _FlatAppMainState extends State<ContactsRoute> {
   void getContacts() async {
     try {
       PermissionStatus permissionStatus = await _getPermission();
-      if (permissionStatus == PermissionStatus.granted) {
+      PermissionStatus permissionStatusWRITE = await _getPermissionWRITE();
+      if (permissionStatus == PermissionStatus.granted
+          && permissionStatusWRITE == PermissionStatus.granted) {
         print("Loading contacts...");
         var contacts = await ContactsService.getContacts(withThumbnails: false);
         setState(() {
@@ -44,8 +45,9 @@ class _FlatAppMainState extends State<ContactsRoute> {
         print('Contacts loaded successfully.\nIterating through contacts...');
         iterateThroughContacts();
         print('Iteration completed.\nSaving contact...');
-        SharedPreferences prefs = await SharedPreferences.getInstance();
-        prefs.setString(key, _contact);
+
+        saveShared();
+
         print('Saving contact completed.');
       } else {
         throw PlatformException(
@@ -76,6 +78,21 @@ class _FlatAppMainState extends State<ContactsRoute> {
     }
   }
 
+  Future<PermissionStatus> _getPermissionWRITE() async {
+    PermissionStatus permission = await PermissionHandler()
+        .checkPermissionStatus(PermissionGroup.storage);
+    if (permission != PermissionStatus.granted &&
+        permission != PermissionStatus.disabled) {
+      Map<PermissionGroup, PermissionStatus> permisionStatus =
+      await PermissionHandler()
+          .requestPermissions([PermissionGroup.storage]);
+      return permisionStatus[PermissionGroup.storage] ??
+          PermissionStatus.unknown;
+    } else {
+      return permission;
+    }
+  }
+
   //-------------------------- FILE CONTENT ------------------------------------
 
   void processingFunc(var element){
@@ -94,23 +111,28 @@ class _FlatAppMainState extends State<ContactsRoute> {
     );
   }
 
-  void saveShared(String key, String text) async {
-    // store contacts
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    prefs.setString(key, text);
+  Future<File> getFile() async {
+    String path = '/storage/emulated/0/exported_data.txt';
+    print(path);
+    return File(path);
   }
 
-  Future<String> readShared(String key) async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    return prefs.getString(key);
+  void readShared() async {
+    // Read the file
+    File file = await getFile();
+    _contact = await file.readAsString();
   }
 
-  void removeShared(key) async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    if(prefs.containsKey(key)){
-      //Remove String
-      prefs.remove(key);
-    }
+  void saveShared() async {
+    // Save to the file
+    File file = await getFile();
+    file.writeAsString(_contact);
+  }
+
+  void removeShared() async {
+    // Save to the file
+    File file = await getFile();
+    file.writeAsString('');
   }
 
   //---------------------------- MAIN WIDGET -----------------------------------
@@ -167,7 +189,7 @@ class _FlatAppMainState extends State<ContactsRoute> {
                 // EXIT --------------------------------------------------------
                 // exit app - this is preferred way
                 print("Removing contact...");
-                removeShared(key);
+                removeShared();
                 break;
               case 1:
                 // LOAD DATA ---------------------------------------------------
